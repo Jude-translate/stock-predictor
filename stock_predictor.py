@@ -16,6 +16,7 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
 from newsapi import NewsApiClient
 import yfinance as yf
+from enhanced_features import EnhancedIndicators, AdditionalModels
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -47,6 +48,8 @@ def fetch_stock_data(symbol, days):
     start_date = end_date - timedelta(days=days)
     df = yf.download(symbol, start=start_date, end=end_date)
     return df
+indicator_processor = EnhancedIndicators()
+df = indicator_processor.calculate_custom_indicators(df)
 
 @st.cache_data(ttl=3600)
 def get_news_headlines(symbol):
@@ -332,6 +335,16 @@ class MultiAlgorithmStockPredictor:
             gbm_model.fit(X_other_train, y_train)
             gbm_pred = gbm_model.predict(X_other_test[-1:])
             predictions['GBM'] = gbm_pred[0]
+model_processor = AdditionalModels()
+
+# Predict with Extra Trees Regressor
+et_predictions = model_processor.train_extra_trees(X_train, y_train, X_test)
+
+# Predict with CatBoost Regressor
+cb_predictions = model_processor.train_catboost(X_train, y_train, X_test)
+st.subheader("Additional Model Predictions")
+st.write("Extra Trees Predictions:", et_predictions)
+st.write("CatBoost Predictions:", cb_predictions)
 
             # Train and predict with ARIMA
             try:
